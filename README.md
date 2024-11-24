@@ -8,6 +8,7 @@
 # 2. Grid: The grid creates a 50X50km square around a city's given coordinates (in this example, NYC) and populates the square with search points. It assumes that each circle has a radius of 2km and ensures the entire area of the rectangle is covered. 
 
 see below for grid search example:
+![grid_query](https://github.com/user-attachments/assets/bb61193f-88c8-4915-97b6-cd8ed82f333c)
 
 
 # 3. Discovery Reveals the results of the data extraction. It seems that the process can be optimized as only around 1200 points were returned despite searching around 200 coordinate points in the city. That being said the positioning of some of the points (say in the ocean) is a waste thus there is defintly room for improvement with better search point placement. 
