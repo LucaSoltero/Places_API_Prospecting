@@ -163,7 +163,7 @@ def read_coordinates_from_csv(file_path):
 
 def main():
 
-    file_path = '/data/grid_search_coordinates/nyc_full_coverage_grid.csv'  # Path to your CSV file
+    file_path = '/data/mesh_search_coordinates/nyc_full_coverage_grid.csv'  # Path to your CSV file
     coordinates_list = read_coordinates_from_csv(file_path)
     csvPath = "/Users/lucasoltero/PycharmProjects/Avoca_Prospecting/data/HVAC_Query/MeshSearch_Plumbers_NYC.csv"
     save_to_csv(getAllBusinesses(coordinates_list, search_plumberType), csvPath)
