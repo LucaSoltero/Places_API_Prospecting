@@ -3,7 +3,7 @@ api_key.py
 __pycache__/
 *.py[cod]
 
-/Users/lucasoltero/PycharmProjects/Avoca_Prospecting/data/HVAC_Query_Test/
+data/HVAC_Query_Test/
 Scraps/
 
 
