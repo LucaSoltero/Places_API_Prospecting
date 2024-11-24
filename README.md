@@ -4,7 +4,7 @@ This repo contains three files:
 
   See below how doing a singlular api call across a large rarius only returns 60 results missing out on many businesses
 
-![Alt text](LucaSoltero/Places_API_Prospecting/blob/main/grid_query.jpeg)
+![Alt text](/LucaSoltero/Places_API_Prospecting/blob/main/grid_query.jpeg)
 
 3. Grid: The grid creates a 50X50km square around a city's given coordinates (in this example, NYC) and populates the square with search points. It assumes that each circle has a radius of 2km and ensures the entire area of the rectangle is covered. 
 
