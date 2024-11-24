@@ -66,7 +66,7 @@ def main():
     # Generate the grid
     grid = generate_full_coverage_grid(center_lat, center_lon, square_side_km, circle_radius_km)
     # Write to CSV
-    write_coordinates_to_csv(grid, "data/Coordinates/nyc_full_coverage_grid.csv")
+    write_coordinates_to_csv(grid, "data/mesh_search_coordinates/nyc_full_coverage_grid.csv")
 
 
 if __name__ == '__main__':
