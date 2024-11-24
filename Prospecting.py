@@ -42,7 +42,7 @@ def search_Query(query, location):
             break
 
         # Delay before the next request (Google API may require a few seconds)
-        time.sleep(6)  # Recommended delay
+        time.sleep(3)  # Recommended delay
 
     return results
 
