@@ -1,0 +1,2 @@
+This repo contains three files:
+1.Prospecting: Calls Google Places API and querys for plumbing companies. Since Places only returns up to 60 results from an api call in a given radius I wrote a script that generates around 200 points within a 50X50km rectangle around New York city. Propseciting iterates through this coordinates list and calls the api for each point in the grid maximizing data extraction.
