@@ -1,6 +1,7 @@
 import requests
 import time
 import csv
+import pandas as pd
 from api_key import key
 
 # Automating prospecting process for Avoca using Google Places API
@@ -8,7 +9,6 @@ from api_key import key
 SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 API_KEY = key
-
 
 # NYC : "40.712776,-74.005974
 
@@ -20,7 +20,7 @@ def search_Query(query, location):
     while True:
         params = {
             "location": location,  # Example coordinates (Los Angeles, CA)
-            "radius": 2000,  # Radius in meters
+            "radius": 1000,  # Radius in meters
             "query": query,  # e.g., "HVAC services"
             "key": API_KEY,
         }
@@ -47,7 +47,7 @@ def search_Query(query, location):
     return results
 
 
-def search_plumberType(location):
+def search_Type(location, type):
     results = []
     next_page_token = None
 
@@ -55,8 +55,8 @@ def search_plumberType(location):
 
         params = {
             "location": location,
-            "radius": 2000,  # Radius in meters
-            "type": "plumber",  # Place type
+            "radius": 1000,  # Radius in meters
+            "type": type,  # Place type
             "key": API_KEY,
         }
 
@@ -78,15 +78,16 @@ def search_plumberType(location):
             break
 
         # Delay before the next request (Google API may require a few seconds)
-        time.sleep(6)  # Recommended delay
+        time.sleep(3)  # Recommended delay
 
     return results
 
 
-def fetch_reviews(place_id, order="relevant"):
+
+def fetch_Details(place_id):
     params = {
         "place_id": place_id,
-        "fields": "name,rating,reviews,formatted_address,opening_hours,website",
+        "fields": "name,formatted_phone_number,website,formatted_address,rating,user_ratings_total,opening_hours,reviews",
         "key": API_KEY,
     }
 
@@ -95,56 +96,84 @@ def fetch_reviews(place_id, order="relevant"):
         response.raise_for_status()
         result = response.json().get("result", {})
 
-        # Process reviews based on ordering preference
+        # Extract reviews
         reviews = result.get("reviews", [])
-        if order == "recent":
-            reviews = sorted(reviews, key=lambda r: r["time"], reverse=True)  # Most recent first
+        relevant_reviews = [
+            {
+                "author_name": review.get("author_name", "Anonymous"),
+                "rating": review.get("rating", "N/A"),
+                "time": review.get("time", "N/A"),
+                "text": review.get("text", "No review text"),
+                "relative_time_description": review.get("relative_time_description", "N/A"),
+            }
+            for review in reviews
+        ]
 
-        # Return the full details, including ordered reviews
-        result["reviews"] = reviews
-        return result
+        return {
+            "name": result.get("name", "N/A"),
+            "formatted_phone_number": result.get("formatted_phone_number", "N/A"),
+            "website": result.get("website", "N/A"),
+            "formatted_address": result.get("formatted_address", "N/A"),
+            "rating": result.get("rating", "N/A"),
+            "user_ratings_total": result.get("user_ratings_total", "N/A"),
+            "opening_hours": "; ".join(result.get("opening_hours", {}).get("weekday_text", [])),
+            "reviews": relevant_reviews,  # Default sorted by relevance
+        }
     except requests.exceptions.RequestException as e:
         print(f"Error fetching details for place_id {place_id}: {e}")
-        return {}
+        return {
+            "name": "N/A",
+            "formatted_phone_number": "N/A",
+            "website": "N/A",
+            "formatted_address": "N/A",
+            "rating": "N/A",
+            "user_ratings_total": "N/A",
+            "opening_hours": "N/A",
+            "reviews": [],
+        }
 
 
-def getAllBusinesses(coordinates_mesh, hvac_search):
-    seen_place_ids = set()  # A set to track the place_ids we've already encountered
-    unique_businesses = []  # List to store unique business objects
+def save_to_csv(businesses, filename="hvac_companies.csv", businessType=''):
+    data = []
 
+    for business in businesses:
+        place_id = business.get("place_id")
+        details = fetch_Details(place_id)
+        name = details.get("name")
+        formatted_phone_number = details.get("formatted_phone_number")
+        formatted_address = details.get("formatted_address", "N/A")
+        rating = details.get("rating", "N/A")
+        user_ratings_total = details.get("user_ratings_total", "N/A")
+        opening_hours = details.get("opening_hours")
+        website = details.get("website", "N/A")
+        reviews = "; ".join([review.get("text", "") for review in details.get("reviews", [])])
+        # Add the business data to the list
+        data.append({
+            "place_id": place_id,
+            "business_type": businessType,
+            "name": name,
+            "formatted_phone_number": formatted_phone_number,
+            "website": website,
+            "formatted_address": formatted_address,
+            "rating": rating,
+            "user_ratings_total": user_ratings_total,
+            "opening_hours": opening_hours,
+            "reviews": reviews
+        })
+    df = pd.DataFrame(data)
+    df = df.drop_duplicates(subset='place_id', keep='first')
+    # Write the DataFrame to CSV without duplicates
+    df.to_csv(filename, index=False, encoding="utf-8")
+
+
+def getAllBusinesses(coordinates_mesh, hvac_search, query):
+    b_list = []  # List to store unique business objects
     for cord in coordinates_mesh:
-        businesses = hvac_search(cord)  # Get the list of businesses for this coordinate
-        for business in businesses:
-            place_id = business.get("place_id")  # Get the unique place_id for this business
-            if place_id not in seen_place_ids:
-                seen_place_ids.add(place_id)  # Add the place_id to the set
-                unique_businesses.append(business)  # Add the business to the list
-    return unique_businesses
+        businesses = hvac_search(cord, query)  # Get the list of businesses for this coordinate
+        b_list.extend(businesses)
 
-
-def save_to_csv(businesses, filename="hvac_companies.csv", ):
-    # Define CSV headers
-    headers = ["place_id", "name", "formatted_address"
-        , "rating", "user_ratings_total", "opening_hours", "website", "reviews", "recent_reviews"]
-
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)  # Write header row
-
-        for business in businesses:
-            place_id = business.get("place_id")
-            details = fetch_reviews(place_id)
-            details_recent = fetch_reviews(place_id, "recent")
-            name = business.get("name")
-            address = business.get("formatted_address", "N/A")
-            rating = business.get("rating", "N/A")
-            total_reviews = business.get("user_ratings_total", "N/A")
-            opening_hours = "; ".join(business.get("opening_hours", {}).get("weekday_text", []))
-            website = business.get("website", "N/A")
-            reviews = "; ".join([review.get("text", "") for review in details.get("reviews", [])])
-            recent_reviews = "; ".join([review.get("text", "") for review in details_recent.get("reviews", [])])
-            writer.writerow([place_id, name, address, rating, total_reviews,
-                             opening_hours, website, reviews, recent_reviews])
+    print("business list created")
+    return b_list
 
 
 def read_coordinates_from_csv(file_path):
@@ -162,11 +191,16 @@ def read_coordinates_from_csv(file_path):
 
 
 def main():
+    newYork = "40.712776,-74.005974"
+    bs = search_Type(newYork, "plumber")
+    path = "data/HVAC_Query/testPhoneEnrichement5.csv"
+    save_to_csv(bs, path)
 
-    file_path = 'data/mesh_search_coordinates/nyc_full_coverage_grid.csv'  # Path to your CSV file
+    file_path = 'data/Coordinates/nyc_full_grid_coordinates_1k.csv'  # Path to your CSV file
     coordinates_list = read_coordinates_from_csv(file_path)
-    csvPath = "data/HVAC_Query/MeshSearch_Plumbers_NYC.csv"
-    save_to_csv(getAllBusinesses(coordinates_list, search_plumberType), csvPath)
+    csvPath = "data/HVAC_Query/MeshSearch_Plumbers_NYC2.csv"
+
+
 
 
 if __name__ == '__main__':
